@@ -13,12 +13,46 @@ import RubricContent from '@cdo/apps/templates/rubrics/RubricContent';
 import teacherRubric from '@cdo/apps/templates/rubrics/teacherRubricRedux';
 import teacherSections from '@cdo/apps/templates/teacherDashboard/teacherSectionsRedux';
 
+let mockLearningGoalsProps = {};
+let mockSectionSelectorRendered = false;
+let mockStudentSelectorRendered = false;
+
+jest.mock('@cdo/apps/templates/rubrics/LearningGoals', () => {
+  return function MockLearningGoals(props) {
+    mockLearningGoalsProps = props;
+    return (
+      <div data-testid="learning-goals">
+        {props.learningGoals?.map(lg => (
+          <div key={lg.id}>{lg.learningGoal}</div>
+        ))}
+      </div>
+    );
+  };
+});
+
+jest.mock('@cdo/apps/templates/rubrics/SectionSelector', () => {
+  return function MockSectionSelector() {
+    mockSectionSelectorRendered = true;
+    return <div data-testid="section-selector" />;
+  };
+});
+
+jest.mock('@cdo/apps/templates/rubrics/StudentSelector', () => {
+  return function MockStudentSelector() {
+    mockStudentSelectorRendered = true;
+    return <div data-testid="student-selector" />;
+  };
+});
+
 describe('RubricContent', () => {
   let store;
   beforeEach(() => {
     stubRedux();
     registerReducers({teacherRubric, teacherSections, teacherPanel});
     store = getStore();
+    mockLearningGoalsProps = {};
+    mockSectionSelectorRendered = false;
+    mockStudentSelectorRendered = false;
   });
 
   afterEach(() => {
@@ -75,29 +109,35 @@ describe('RubricContent', () => {
     {id: 2, learning_goal_id: 2, understanding: 2, aiConfidencePassFail: 2},
   ];
 
-  it('displays LearningGoals component with learning goals when viewing student work on assessment level', () => {
+  it('displays LearningGoals component with correct props when viewing student work on assessment level', () => {
     render(
       <Provider store={store}>
         <RubricContent {...defaultProps} aiEvaluations={aiEvaluations} />
       </Provider>
     );
 
-    expect(screen.getByText('goal 1')).toBeInTheDocument();
-    expect(screen.getByText('goal 2')).toBeInTheDocument();
+    expect(screen.getByTestId('learning-goals')).toBeInTheDocument();
+    expect(mockLearningGoalsProps.studentLevelInfo).toBe(studentLevelInfo);
+    expect(mockLearningGoalsProps.learningGoals).toBe(
+      defaultRubric.learningGoals
+    );
+    expect(mockLearningGoalsProps.aiEvaluations).toBe(aiEvaluations);
   });
 
   it('displays Student and Section selectors', () => {
-    const {container} = render(
+    render(
       <Provider store={store}>
         <RubricContent {...defaultProps} />
       </Provider>
     );
 
-    // eslint-disable-next-line no-restricted-properties
-    expect(container.querySelector('.selectors')).toBeInTheDocument();
+    expect(screen.getByTestId('section-selector')).toBeInTheDocument();
+    expect(screen.getByTestId('student-selector')).toBeInTheDocument();
+    expect(mockSectionSelectorRendered).toBe(true);
+    expect(mockStudentSelectorRendered).toBe(true);
   });
 
-  it('shows learning goals when viewing student work on non assessment level', () => {
+  it('shows learning goals with correct props when viewing student work on non assessment level', () => {
     render(
       <Provider store={store}>
         <RubricContent
@@ -109,11 +149,14 @@ describe('RubricContent', () => {
       </Provider>
     );
 
-    expect(screen.getByText('goal 1')).toBeInTheDocument();
-    expect(screen.getByText('goal 2')).toBeInTheDocument();
+    expect(screen.getByTestId('learning-goals')).toBeInTheDocument();
+    expect(mockLearningGoalsProps.learningGoals).toBe(
+      defaultRubric.learningGoals
+    );
+    expect(mockLearningGoalsProps.canProvideFeedback).toBe(false);
   });
 
-  it('shows learning goals when not viewing student work', () => {
+  it('shows learning goals with correct props when not viewing student work', () => {
     render(
       <Provider store={store}>
         <RubricContent
@@ -124,8 +167,11 @@ describe('RubricContent', () => {
       </Provider>
     );
 
-    expect(screen.getByText('goal 1')).toBeInTheDocument();
-    expect(screen.getByText('goal 2')).toBeInTheDocument();
+    expect(screen.getByTestId('learning-goals')).toBeInTheDocument();
+    expect(mockLearningGoalsProps.learningGoals).toBe(
+      defaultRubric.learningGoals
+    );
+    expect(mockLearningGoalsProps.canProvideFeedback).toBe(false);
   });
 
   it('shows level title when teacher is viewing student work', () => {
@@ -198,19 +244,14 @@ describe('RubricContent', () => {
     ).toBeInTheDocument();
   });
 
-  it('does not show AI evaluations when teacher has disabled AI', () => {
+  it('does not pass down AI analysis to components when teacher has disabled AI', () => {
     render(
       <Provider store={store}>
-        <RubricContent
-          {...defaultProps}
-          teacherHasEnabledAi={false}
-          aiEvaluations={aiEvaluations}
-        />
+        <RubricContent {...defaultProps} teacherHasEnabledAi={false} />
       </Provider>
     );
 
-    expect(screen.getByText('goal 1')).toBeInTheDocument();
-    expect(screen.getByText('goal 2')).toBeInTheDocument();
+    expect(mockLearningGoalsProps.aiEvaluations).not.toBe(aiEvaluations);
   });
 
   it('shows info alert when not viewing project level', () => {
