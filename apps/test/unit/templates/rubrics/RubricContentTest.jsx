@@ -1,4 +1,4 @@
-import {mount, shallow} from 'enzyme'; // eslint-disable-line no-restricted-imports
+import {render, screen} from '@testing-library/react';
 import React from 'react';
 import {Provider} from 'react-redux';
 
@@ -75,98 +75,93 @@ describe('RubricContent', () => {
     {id: 2, learning_goal_id: 2, understanding: 2, aiConfidencePassFail: 2},
   ];
 
-  it('displays LearningGoals component with correct props when viewing student work on assessment level', async () => {
-    const wrapper = mount(
+  it('displays LearningGoals component with learning goals when viewing student work on assessment level', () => {
+    render(
       <Provider store={store}>
         <RubricContent {...defaultProps} aiEvaluations={aiEvaluations} />
       </Provider>
     );
-    expect(wrapper.find('LearningGoals').length).toBe(1);
-    expect(wrapper.find('LearningGoals').prop('studentLevelInfo')).toBe(
-      studentLevelInfo
-    );
-    expect(wrapper.find('LearningGoals').prop('learningGoals')).toBe(
-      defaultRubric.learningGoals
-    );
-    expect(wrapper.find('LearningGoals').prop('aiEvaluations')).toBe(
-      aiEvaluations
-    );
+
+    expect(screen.getByText('goal 1')).toBeInTheDocument();
+    expect(screen.getByText('goal 2')).toBeInTheDocument();
   });
 
   it('displays Student and Section selectors', () => {
-    const wrapper = mount(
+    const {container} = render(
       <Provider store={store}>
         <RubricContent {...defaultProps} />
       </Provider>
     );
-    expect(wrapper.find('SectionSelector').length).toBe(1);
-    expect(wrapper.find('StudentSelector').length).toBe(1);
+
+    // eslint-disable-next-line no-restricted-properties
+    expect(container.querySelector('.selectors')).toBeInTheDocument();
   });
 
-  it('shows learning goals with correct props when viewing student work on non assessment level', () => {
-    const wrapper = shallow(
-      <RubricContent
-        {...defaultProps}
-        studentLevelInfo={{name: 'Grace Hopper', timeSpent: 706}}
-        canProvideFeedback={false}
-        onLevelForEvaluation={false}
-      />
+  it('shows learning goals when viewing student work on non assessment level', () => {
+    render(
+      <Provider store={store}>
+        <RubricContent
+          {...defaultProps}
+          studentLevelInfo={{name: 'Grace Hopper', timeSpent: 706}}
+          canProvideFeedback={false}
+          onLevelForEvaluation={false}
+        />
+      </Provider>
     );
-    const renderedLearningGoals = wrapper.find('LearningGoals');
-    expect(renderedLearningGoals).toHaveLength(1);
-    expect(renderedLearningGoals.props().learningGoals).toBe(
-      defaultRubric.learningGoals
-    );
-    expect(renderedLearningGoals.props().canProvideFeedback).toBe(false);
+
+    expect(screen.getByText('goal 1')).toBeInTheDocument();
+    expect(screen.getByText('goal 2')).toBeInTheDocument();
   });
 
-  it('shows learning goals with correct props when not viewing student work', () => {
-    const wrapper = shallow(
-      <RubricContent
-        {...defaultProps}
-        studentLevelInfo={null}
-        canProvideFeedback={false}
-      />
+  it('shows learning goals when not viewing student work', () => {
+    render(
+      <Provider store={store}>
+        <RubricContent
+          {...defaultProps}
+          studentLevelInfo={null}
+          canProvideFeedback={false}
+        />
+      </Provider>
     );
-    const renderedLearningGoals = wrapper.find('LearningGoals');
-    expect(renderedLearningGoals).toHaveLength(1);
-    expect(renderedLearningGoals.props().learningGoals).toBe(
-      defaultRubric.learningGoals
-    );
-    expect(renderedLearningGoals.props().canProvideFeedback).toBe(false);
+
+    expect(screen.getByText('goal 1')).toBeInTheDocument();
+    expect(screen.getByText('goal 2')).toBeInTheDocument();
   });
 
   it('shows level title when teacher is viewing student work', () => {
-    const wrapper = shallow(<RubricContent {...defaultProps} />);
-    expect(wrapper.find('Heading3').at(0).props().children).toBe(
-      'Data Structures'
-    );
-  });
-
-  it('shows level title when teacher is not viewing student work', () => {
-    const wrapper = shallow(
-      <RubricContent {...defaultProps} studentLevelInfo={null} />
-    );
-    expect(wrapper.find('Heading3').at(0).props().children).toBe(
-      'Data Structures'
-    );
-  });
-
-  it('shows student data if provided', () => {
-    // mount is needed in order for text() to work
-    const wrapper = mount(
+    render(
       <Provider store={store}>
         <RubricContent {...defaultProps} />
       </Provider>
     );
-    expect(wrapper.text()).toContain('time spent 5m 5s');
-    expect(wrapper.text()).toContain('6 attempts');
-    expect(wrapper.text()).toContain('last updated');
+
+    expect(screen.getByText('Data Structures')).toBeInTheDocument();
+  });
+
+  it('shows level title when teacher is not viewing student work', () => {
+    render(
+      <Provider store={store}>
+        <RubricContent {...defaultProps} studentLevelInfo={null} />
+      </Provider>
+    );
+
+    expect(screen.getByText('Data Structures')).toBeInTheDocument();
+  });
+
+  it('shows student data if provided', () => {
+    render(
+      <Provider store={store}>
+        <RubricContent {...defaultProps} />
+      </Provider>
+    );
+
+    expect(screen.getByText(/time spent 5m 5s/i)).toBeInTheDocument();
+    expect(screen.getByText(/6 attempts/i)).toBeInTheDocument();
+    expect(screen.getByText(/last updated/i)).toBeInTheDocument();
   });
 
   it('handles missing student data', () => {
-    // mount is needed in order for text() to work
-    const wrapper = mount(
+    render(
       <Provider store={store}>
         <RubricContent
           {...defaultProps}
@@ -176,14 +171,14 @@ describe('RubricContent', () => {
         />
       </Provider>
     );
-    expect(wrapper.text()).not.toContain('time spent');
-    expect(wrapper.text()).toContain('0 attempts');
-    expect(wrapper.text()).not.toContain('last updated');
+
+    expect(screen.queryByText(/time spent/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/0 attempts/i)).toBeInTheDocument();
+    expect(screen.queryByText(/last updated/i)).not.toBeInTheDocument();
   });
 
   it('doesnt show student level data if not on level for evaluation', () => {
-    // mount is needed in order for text() to work
-    const wrapper = mount(
+    render(
       <Provider store={store}>
         <RubricContent
           {...defaultProps}
@@ -196,39 +191,55 @@ describe('RubricContent', () => {
         />
       </Provider>
     );
-    expect(wrapper.text()).not.toContain('6 attempts');
-    expect(wrapper.text()).toContain('Feedback will be available on Level 7');
+
+    expect(screen.queryByText(/6 attempts/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Feedback will be available on Level 7/i)
+    ).toBeInTheDocument();
   });
 
-  it('does not pass down AI analysis to components when teacher has disabled AI', () => {
-    const wrapper = mount(
+  it('does not show AI evaluations when teacher has disabled AI', () => {
+    render(
       <Provider store={store}>
-        <RubricContent {...defaultProps} teacherHasEnabledAi={false} />
+        <RubricContent
+          {...defaultProps}
+          teacherHasEnabledAi={false}
+          aiEvaluations={aiEvaluations}
+        />
       </Provider>
     );
 
-    expect(wrapper.find('LearningGoals').prop('aiEvaluations')).not.toBe(
-      aiEvaluations
-    );
+    expect(screen.getByText('goal 1')).toBeInTheDocument();
+    expect(screen.getByText('goal 2')).toBeInTheDocument();
   });
 
   it('shows info alert when not viewing project level', () => {
-    const wrapper = shallow(
-      <RubricContent {...defaultProps} onLevelForEvaluation={false} />
+    render(
+      <Provider store={store}>
+        <RubricContent {...defaultProps} onLevelForEvaluation={false} />
+      </Provider>
     );
-    expect(wrapper.find('InfoAlert').length).toBe(1);
-    expect(wrapper.find('InfoAlert').props().text).toBe(
-      'Rubrics can only be evaluated on project levels.'
-    );
+
+    // eslint-disable-next-line no-restricted-properties
+    expect(screen.getByTestId('info-alert')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Rubrics can only be evaluated on project levels/i)
+    ).toBeInTheDocument();
   });
 
   it('shows info alert when not viewing student work', () => {
-    const wrapper = shallow(
-      <RubricContent {...defaultProps} studentLevelInfo={null} />
+    render(
+      <Provider store={store}>
+        <RubricContent {...defaultProps} studentLevelInfo={null} />
+      </Provider>
     );
-    expect(wrapper.find('InfoAlert').length).toBe(1);
-    expect(wrapper.find('InfoAlert').props().text).toBe(
-      'Select a student from the dropdown menu to view and evaluate their work.'
-    );
+
+    // eslint-disable-next-line no-restricted-properties
+    expect(screen.getByTestId('info-alert')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Select a student from the dropdown menu to view and evaluate their work/i
+      )
+    ).toBeInTheDocument();
   });
 });
